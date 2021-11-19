@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.os.Bundle;
@@ -38,23 +39,70 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     MediaPlayer mHumanMediaPlayer;
     MediaPlayer mComputerMediaPlayer;
 
+    private SharedPreferences mPrefs;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mGame = new TicTacToeGame();
-        mBoard = (BoardView) findViewById(R.id.board);
-        mBoard.setGame(mGame);
 
         mInfoTextView = (TextView) findViewById(R.id.information);
         infoHumanWins = (TextView) findViewById(R.id.humanWins);
         infoComputerWins = (TextView) findViewById(R.id.computerWins);
         infoTies = (TextView) findViewById(R.id.ties);
+        findViewById(R.id.playAgain).setOnClickListener(new ButtonPlayAgainClickListener());
+        mBoard = (BoardView) findViewById(R.id.board);
+        mGame = new TicTacToeGame();
 
-        findViewById(R.id.playAgain).setOnClickListener(new ButtonPlayAgainClickListener(mGame));
+        if (savedInstanceState == null) {
+            startGame();
+            mBoard.setGame(mGame);
+        }
 
-        startGame();
         mBoard.setOnTouchListener(this);
+
+        mPrefs = getSharedPreferences("ttt_prefs", MODE_PRIVATE);
+
+        // Restore the scores
+        mGame.UpdateHumanWins(mPrefs.getInt("mHumanWins", 0));
+        mGame.updateComputerWins(mPrefs.getInt("mComputerWins", 0));
+        mGame.UpdateTies(mPrefs.getInt("mTies", 0));
+
+        int difficultyLevel = mPrefs.getInt("difficultyLevel", 0);
+        setDifficultyLevelInteger(difficultyLevel);
+
+        SetTextWins();
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        mGame.setmBoard(savedInstanceState.getCharArray("board"));
+        mGame.mGameOver = savedInstanceState.getBoolean("mGameOver");
+        mInfoTextView.setText(savedInstanceState.getCharSequence("info"));
+        mGame.UpdateHumanWins(savedInstanceState.getInt("mHumanWins"));
+        mGame.UpdateTies(savedInstanceState.getInt("mTies"));
+        mGame.updateComputerWins(savedInstanceState.getInt("mComputerWins"));
+        mGame.currentInitPlayer = savedInstanceState.getChar("mGoFirst");
+        int difficultyLevel = savedInstanceState.getInt("difficultyLevel");
+        setDifficultyLevelInteger(difficultyLevel);
+        mBoard.setGame(mGame);
+        mBoard.invalidate();
+        SetTextWins();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putCharArray("board", mGame.getmBoard());
+        outState.putBoolean("mGameOver", mGame.mGameOver);
+        outState.putInt("mHumanWins", Integer.valueOf(mGame.GetHumanWins()));
+        outState.putInt("mComputerWins", Integer.valueOf(mGame.GetComputerWins()));
+        outState.putInt("mTies", Integer.valueOf(mGame.GetTies()));
+        outState.putCharSequence("info", mInfoTextView.getText());
+        outState.putChar("mGoFirst", mGame.currentInitPlayer);
+        outState.putInt("difficultyLevel", getDifficultyLevelInteger()  );
+
     }
 
     @Override
@@ -63,6 +111,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         super.onResume();
         mHumanMediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.human);
         mComputerMediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.android);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+// Save the current scores
+        SharedPreferences.Editor ed = mPrefs.edit();
+        ed.putInt("mHumanWins", Integer.valueOf(mGame.GetHumanWins()));
+        ed.putInt("mComputerWins", Integer.valueOf(mGame.GetComputerWins()));
+        ed.putInt("mTies", Integer.valueOf(mGame.GetTies()));
+        ed.putInt("difficultyLevel", getDifficultyLevelInteger()  );
+
+        ed.commit();
     }
 
     @Override
@@ -100,12 +161,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         if(player == TicTacToeGame.HUMAN_PLAYER)
         {
             mInfoTextView.setText(R.string.first_human);
+            computerTurn = false;
         }
         else
         {
             mInfoTextView.setText(R.string.first_computer);
             int winner = mGame.checkForWinner();
             setTextInfo(winner);
+            computerTurn = false;
         }
     }
 
@@ -117,15 +180,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         else
         {
             if (winner == 1) {
-                mGame.UpdateTies();
+                mGame.UpdateTies(-1);
                 mInfoTextView.setText(R.string.result_tie);
             }
             else if (winner == 2){
-                mGame.UpdateHumanWins();
+                mGame.UpdateHumanWins(-1);
                 mInfoTextView.setText(R.string.result_human_wins);
             }
             else {
-                mGame.updateComputerWins();
+                mGame.updateComputerWins(-1);
                 mInfoTextView.setText(R.string.result_computer_wins);
             }
             mGame.GameOver();
@@ -133,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     static int winner = -1;
+    static boolean computerTurn = false;
 
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -140,13 +204,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         int col = (int) motionEvent.getX() / mBoard.getBoardCellWidth();
         int row = (int) motionEvent.getY() / mBoard.getBoardCellHeight();
         int pos = row * 3 + col;
-        if (!mGame.mGameOver){
+        if (!mGame.mGameOver && !computerTurn){
             mHumanMediaPlayer.start();
             mGame.setMove(TicTacToeGame.HUMAN_PLAYER, pos);
             mBoard.invalidate();
             // If no winner yet, let the computer make a move
             winner = mGame.checkForWinner();
-
+            computerTurn = true;
             if (winner == 0) {
                 mInfoTextView.setText(R.string.turn_computer);
                 Handler handler = new Handler();
@@ -157,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         mGame.setMove(TicTacToeGame.COMPUTER_PLAYER, move);
                         winner = mGame.checkForWinner();
                         setWinner(winner);
+                        computerTurn = false;
                     }
                 }, 500);
             }
@@ -176,12 +241,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     private class ButtonPlayAgainClickListener implements OnClickListener {
-
-        private TicTacToeGame mGame;
-
-        public ButtonPlayAgainClickListener(TicTacToeGame mGame) {
-            this.mGame = mGame;
-        }
 
         public void onClick(View view) {
             mGame.clearBoard(false);
@@ -212,6 +271,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 return true;
             case R.id.about:
                 ShowDialog(DIALOG_ABOUT_ID);
+                return true;
+            case R.id.reset:
+                mGame.ResetScores();
+                SetTextWins();
                 return true;
         }
         return false;

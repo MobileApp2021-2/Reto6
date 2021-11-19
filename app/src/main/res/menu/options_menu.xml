@@ -8,6 +8,9 @@
     <item android:id="@+id/about"
         android:title="@string/about"
         android:icon="@mipmap/ic_launcher" />
+    <item android:id="@+id/reset"
+        android:title="@string/reset_scores"
+        android:icon="@mipmap/ic_launcher" />
     <item android:id="@+id/quit"
         android:title="@string/quit"
         android:icon="@mipmap/ic_launcher" />

@@ -18,6 +18,8 @@ public class TicTacToeGame {
 
     private Random mRand;
 
+    public char currentInitPlayer;
+
     // The computer's difficulty levels
     public enum DifficultyLevel {Easy, Harder, Expert};
     // Current difficulty level
@@ -25,6 +27,15 @@ public class TicTacToeGame {
 
     public TicTacToeGame() {
         mRand = new Random();
+    }
+
+    public char[] getmBoard() {
+        return mBoard;
+    }
+
+    public void setmBoard(char[] board)
+    {
+        this.mBoard = board;
     }
 
     /**
@@ -40,9 +51,12 @@ public class TicTacToeGame {
      * set computerWins
      * */
 
-    public void updateComputerWins()
+    public void updateComputerWins( int computer)
     {
-        ++computerWins;
+        if(computer < 0)
+            ++computerWins;
+        else
+            computerWins = computer;
     }
 
     public DifficultyLevel getDifficultyLevel() {
@@ -50,6 +64,13 @@ public class TicTacToeGame {
     }
     public void setDifficultyLevel(DifficultyLevel difficultyLevel) {
         mDifficultyLevel = difficultyLevel;
+    }
+
+    public void ResetScores()
+    {
+        computerWins = 0;
+        humanWins = 0;
+        ties = 0;
     }
 
     /**
@@ -65,9 +86,12 @@ public class TicTacToeGame {
      * set humanWins
      * */
 
-    public void UpdateHumanWins()
+    public void UpdateHumanWins(int human)
     {
-        ++humanWins;
+        if(human < 0)
+            ++humanWins;
+        else
+            humanWins = human;
     }
 
     /**
@@ -83,9 +107,12 @@ public class TicTacToeGame {
      * set ties
      * */
 
-    public void UpdateTies()
+    public void UpdateTies(int ties)
     {
-        ++ties;
+        if(ties < 0)
+            ++this.ties;
+        else
+            this.ties = ties;
     }
 
     /**
@@ -237,9 +264,16 @@ public class TicTacToeGame {
             //computer turn
             int move = GetComputerMove();
             setMove(COMPUTER_PLAYER, move);
+            currentInitPlayer = COMPUTER_PLAYER;
             return COMPUTER_PLAYER;
         }
+        currentInitPlayer = HUMAN_PLAYER;
         return HUMAN_PLAYER;
+    }
+
+    public void setInitPlayer(char player)
+    {
+        this.currentInitPlayer = player;
     }
 
     /** Clear the board of all X's and O's by setting all spots to OPEN_SPOT. */
