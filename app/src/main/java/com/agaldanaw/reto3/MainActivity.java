@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         mGame.updateComputerWins(mPrefs.getInt("mComputerWins", 0));
         mGame.UpdateTies(mPrefs.getInt("mTies", 0));
 
-        int difficultyLevel = mPrefs.getInt("difficultyLevel", 0);
+        int difficultyLevel = mPrefs.getInt("difficultyLevel", getDifficultyLevelInteger() );
         setDifficultyLevelInteger(difficultyLevel);
 
         SetTextWins();
